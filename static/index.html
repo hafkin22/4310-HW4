@@ -63,7 +63,7 @@
             const svg = d3.select("#barchart");
             const width = svg.attr("width");
             const height = svg.attr("height");
-            const margin = { top: 10, right: 10, bottom: 40, left:200};
+            const margin = { top: 10, right: 10, bottom: 55, left:220};
             const chartWidth = width - margin.left - margin.right;
             const chartHeight = height - margin.top - margin.bottom;
             let annotations = svg.append("g").attr("id","annotations");
@@ -190,6 +190,8 @@
                 const divisionCountScales = {'categories': categoriesCountScale, 'keywords': keywordsCountScale, 'bureaus': bureausCountScale, 'programs': programsCountScale}
 
                 const divisionColorScales = {'categories': categoriesColor, 'keywords': keywordsColor, 'bureaus': bureausColor, 'programs': programssColor}
+
+                const axistitles = {'categories': "Category", 'keywords': "Keyword", 'bureaus': "Bureau", 'programs': "Federal Program"}
                 
 
                 const categorySelector = d3.select("#categorySelector");
@@ -198,6 +200,7 @@
                     annotations.selectAll("g").remove();
                     chartArea.selectAll("line").remove();
                     chartArea.selectAll("circle").remove();
+                    chartArea.selectAll("text").remove();
 
                     let currentSelection = categorySelector.property("value");
 
@@ -205,6 +208,7 @@
                     let divisionScale = divisionScales[currentSelection];
                     let divisionCountScale = divisionCountScales[currentSelection];
                     let divisionColorScale = divisionColorScales[currentSelection];
+                    let axistitle = axistitles[currentSelection];
 
                     let leftAxis = d3.axisLeft(divisionScale);
 
@@ -250,6 +254,18 @@
                             .attr('id', 'fullcount')
                             .attr('x', 500)
                             .attr('y', 500);
+
+                    chartArea.append('text')
+                             .attr('x', width/2 - margin.left)
+                             .attr('y', height - 10)
+                             .text("Number of Datasets Archived");
+
+                    chartArea.append('text')
+                             .attr('x', -margin.left+15)
+                             .attr('y', height/2)
+                             .attr('transform', 'rotate(-90, ' + (-margin.left + 15) + ', ' + (height / 2) + ')')
+                             .attr('text-anchor', 'middle')
+                             .text(axistitle);
 
                     circles.on("mouseover", function() {
                         d3.select(this)
