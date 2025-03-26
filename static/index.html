@@ -1,8 +1,286 @@
 <html>
     <head>
         <script src="https://d3js.org/d3.v7.min.js"></script>
+        <style>
+            body {
+                background-color: #f8f5ec;
+            }
+
+            h1 {
+                text-align: center;
+            }
+
+            h3 {
+                text-align: center;
+            }
+
+            p {
+                width: 700px;
+                margin: auto;
+            }
+
+            .gridlines line {
+                stroke: lightgray;
+            }
+
+            .mainarea {
+                display: flex;
+                flex-direction: column;
+            }
+
+            .graph {
+                display: flex;
+                flex-direction: row;
+            }
+        </style>
     </head>
     <body>
-        <h1>THIS IS WORKING</h1>
+        <h1>SAVE THE DATA</h1>
+        <h3>CDC Datasets backed up as protection from censorship by the Trump Administration</h3>
+
+        <p style="margin-bottom: 10px">As part of the Trump administration's anti-LGBTQ and anti-DEI platform, many CDC webpages and datasets have been removed from the internet due to their relationship to said topics. In addition to more obvious content, they have also censored data that has no direct relation to LGBTQ and DEI issues, including the largest monitoring program on high school health-related behaviors.</p>
+
+        <p>Here, you can explore the current progress of an effort to back up the CDC's data library to <a href="https://archive.org/">archive.org</a> to minimize the loss of this valuable information:</p>
+
+        <div class="mainarea">
+            <div>
+                <label for="categorySelector">Break down progress by:</label>
+                <select id="categorySelector">
+                    <option value="categories">CDC Category</option>
+                    <option value="keywords">Keyword</option>
+                    <option value="bureaus">Bureau</option>
+                    <option value="programs">Government Program</option>
+                </select>
+            </div>
+            <div class="graph">
+                <svg id="barchart" height="1000" width="1000"></svg>
+                <p>ADD TEXT ABOUT THE TOP VALUES TO EXPLAIN WHAT THEY MEAN</p>
+            </div>
+            <p>ADD NOTE HERE ABOUT CHANGES MADE TO THE DATA</p>
+        </div>
+
+        <script>
+            const svg = d3.select("#barchart");
+            const width = svg.attr("width");
+            const height = svg.attr("height");
+            const margin = { top: 10, right: 10, bottom: 40, left:200};
+            const chartWidth = width - margin.left - margin.right;
+            const chartHeight = height - margin.top - margin.bottom;
+            let annotations = svg.append("g").attr("id","annotations");
+            let chartArea = svg.append("g").attr("id","bars")
+                               .attr("transform",`translate(${margin.left},${margin.top})`);
+
+            const requestData = async () => {
+                const cdc_datasets = await d3.csv("cdc_datasets.csv");
+
+                const fpi_codes = await d3.csv("fpi_codes.csv");
+
+                const omb_codes = await d3.csv("omb_codes.csv");
+
+                // For breakdown by category (original dataset)
+                const categoryCounts = {};
+
+                cdc_datasets.forEach(d => {
+                    categoryCounts[d.category] = (categoryCounts[d.category] || 0) + 1;
+                });
+                
+                let categories_unfiltered = Object.entries(categoryCounts).map(([category, count]) => ({ division: category, count }));
+
+                const categories = categories_unfiltered.filter(d => d.division !== "This dataset has not been categorized");
+
+                categories.forEach(d => {
+                    if (d.division.length > 35) {
+                        d.division = d.division.substring(0, 35) + "...";
+                    }        
+                });
+
+                categories.sort((a, b) => a.count - b.count);
+
+                const categoriesCountExtent = d3.extent(categories, d => d['count']);
+                const categoriesCountScale = d3.scaleLinear().domain(categoriesCountExtent).range([0, chartWidth]);
+
+                const categoriesExtent = d3.map(categories, d => d.division);
+                const categoriesScale = d3.scaleBand().domain(categoriesExtent).range([chartHeight, 0]);
+
+                const categoriesColor = d3.scaleSequential(d3.interpolateMagma).domain(categoriesCountExtent);
+
+                // For breakdown by keywords
+                const keywordCounts = {};
+                
+                cdc_datasets.forEach( d => {
+                    d.tags = d.tags.split(",").map(tag => tag.trim());
+                    d.tags.forEach(t => {
+                        keywordCounts[t] = (keywordCounts[t] || 0) + 1;
+                    });
+                });
+
+                let keywords_unfiltered = Object.entries(keywordCounts).map(([keyword, count]) => ({ division: keyword, count }));
+
+                const keywords = keywords_unfiltered.filter(d => (d.division !== 'This dataset does not have any tags') && (d.count >= 20));
+
+                console.log(keywords);
+
+                keywords.sort((a, b) => a.count - b.count);
+
+                const keywordsCountExtent = d3.extent(keywords, d => d['count']);
+                const keywordsCountScale = d3.scaleLinear().domain(keywordsCountExtent).range([0, chartWidth]);
+
+                const keywordsExtent = d3.map(keywords, d => d.division);
+                const keywordsScale = d3.scaleBand().domain(keywordsExtent).range([chartHeight, 0]);
+
+                const keywordsColor = d3.scaleSequential(d3.interpolateMagma).domain(keywordsCountExtent);
+
+                // For breakdown by bureau
+                const bureauCounts = {};
+
+                cdc_datasets.forEach(d => {
+                    bureau_split = d.bureau_code.split(":");
+                    d['agency'] = String(Number(bureau_split[0]));
+                    d['bureau'] = String(Number(bureau_split[1]));
+
+                    omb_codes.forEach( c => {
+                        if (d['agency'] === c['agency_code'] & d['bureau'] === c['bureau_code']) {
+                            bureauCounts[c['bureau_name']] = (bureauCounts[c['bureau_name']] || 0) + 1;
+                        }
+                    });
+                });
+
+                const bureaus = Object.entries(bureauCounts).map(([bureau, count]) => ({ division: bureau, count }));
+
+                bureaus.sort((a, b) => a.count - b.count);
+
+                const bureausCountExtent = d3.extent(bureaus, d => d['count']);
+                const bureausCountScale = d3.scaleLinear().domain(bureausCountExtent).range([0, chartWidth]);
+
+                const bureausExtent = d3.map(bureaus, d => d.division);
+                const bureausScale = d3.scaleBand().domain(bureausExtent).range([chartHeight, 0]);
+
+                const bureausColor = d3.scaleSequential(d3.interpolateMagma).domain(bureausCountExtent);
+
+                // For breakdown by program
+                const programCounts = {};
+
+                cdc_datasets.forEach(d => {
+                    fpi_codes.forEach( c => {
+                        if (d['program_code'] === c['program_code_pod_format']) {
+                            programCounts[c['program_name']] = (programCounts[c['program_name']] || 0) + 1;
+                        }
+                    });
+                });
+
+                const programs = Object.entries(programCounts).map(([program, count]) => ({ division: program, count }));
+
+                programs.sort((a, b) => a.count - b.count);
+
+                const programsCountExtent = d3.extent(programs, d => d['count']);
+                const programsCountScale = d3.scaleLinear().domain(programsCountExtent).range([0, chartWidth]);
+
+                const programsExtent = d3.map(programs, d => d.division);
+                const programsScale = d3.scaleBand().domain(programsExtent).range([chartHeight, 0]);
+
+                const programssColor = d3.scaleSequential(d3.interpolateMagma).domain(programsCountExtent);
+
+
+                // MAKE SCALE DICTIONARIES
+
+                const divisions = {'categories': categories, 'keywords': keywords, 'bureaus': bureaus, 'programs': programs}
+
+                const divisionScales = {'categories': categoriesScale, 'keywords': keywordsScale, 'bureaus': bureausScale, 'programs': programsScale}
+
+                const divisionCountScales = {'categories': categoriesCountScale, 'keywords': keywordsCountScale, 'bureaus': bureausCountScale, 'programs': programsCountScale}
+
+                const divisionColorScales = {'categories': categoriesColor, 'keywords': keywordsColor, 'bureaus': bureausColor, 'programs': programssColor}
+                
+
+                const categorySelector = d3.select("#categorySelector");
+
+                function updateGraph() {
+                    annotations.selectAll("g").remove();
+                    chartArea.selectAll("line").remove();
+                    chartArea.selectAll("circle").remove();
+
+                    let currentSelection = categorySelector.property("value");
+
+                    let divisionData = divisions[currentSelection];
+                    let divisionScale = divisionScales[currentSelection];
+                    let divisionCountScale = divisionCountScales[currentSelection];
+                    let divisionColorScale = divisionColorScales[currentSelection];
+
+                    let leftAxis = d3.axisLeft(divisionScale);
+
+                    annotations.append("g")
+                            .attr("class", "y axis")
+                            .attr("transform",`translate(${margin.left-10},${margin.top})`)
+                            .call(leftAxis);
+
+                    let bottomAxis = d3.axisBottom(divisionCountScale)
+                    let bottomGridlines = d3.axisBottom(divisionCountScale)
+                                            .tickSize(-chartHeight-10)
+                                            .tickFormat("");
+
+                    annotations.append("g")
+                                .attr("class", "x axis")
+                                .attr("transform",`translate(${margin.left},${chartHeight+margin.top+10})`)
+                                .call(bottomAxis);
+                    annotations.append("g")
+                                .attr("class", "x gridlines")
+                                .attr("transform",`translate(${margin.left},${chartHeight+margin.top+10})`)
+                                .call(bottomGridlines);
+
+                    // Data join for lines
+                    chartArea.selectAll('line').data(divisionData)
+                            .join('line')
+                            .attr('x1', d => divisionCountScale(d.count))
+                            .attr('x2', 0)
+                            .attr('y1', d => divisionScale(d.division) + (divisionScale.bandwidth()/2))
+                            .attr('y2', d => divisionScale(d.division) + (divisionScale.bandwidth()/2))
+                            .attr('stroke-width', 4)
+                            .attr('stroke', "red");
+
+                    // Data join for end circles
+                    let circles = chartArea.selectAll('circle').data(divisionData)
+                            .join('circle')
+                            .attr('cx', d => divisionCountScale(d.count))
+                            .attr('cy', d => divisionScale(d.division) + (divisionScale.bandwidth()/2))
+                            .attr('r', 4)
+                            .attr('fill', "red");
+
+                    // Add text label
+                    chartArea.append('text')
+                            .attr('id', 'fullcount')
+                            .attr('x', 500)
+                            .attr('y', 500);
+
+                    circles.on("mouseover", function() {
+                        d3.select(this)
+                        .transition().duration(200)
+                        .attr("stroke-width", 2)
+                        .attr("stroke", "black");
+
+                        let division_label = d3.select(this).datum()['division'];
+                        let division_count = d3.select(this).datum()['count'];
+
+                        d3.select('#fullcount')
+                          .text(division_label + ": " + division_count)
+                          .attr("x", divisionCountScale(division_count))
+                          .attr("y", divisionScale(division_label)+(divisionScale.bandwidth()/2));
+                    });
+
+                    circles.on("mouseout", function() {
+                        d3.select(this)
+                        .transition().duration(200)
+                        .attr("stroke-width", 0);
+
+                        d3.select('#fullcount').text("");
+                    });
+                }
+                updateGraph();
+
+                categorySelector.on("change", updateGraph);
+                
+
+            }
+            requestData();
+        </script>
     </body>
 </html>
