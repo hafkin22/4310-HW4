@@ -1,22 +1,47 @@
 <html>
     <head>
         <script src="https://d3js.org/d3.v7.min.js"></script>
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link href="https://fonts.googleapis.com/css2?family=Nunito:ital,wght@0,200..1000;1,200..1000&display=swap" rel="stylesheet">
+        <link href="https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap" rel="stylesheet">
+
         <style>
             body {
-                background-color: #f8f5ec;
+                background-color: white;
+                font-family: "Nunito";
+                margin: 0;
             }
 
             h1 {
                 text-align: center;
+                font-family: "Poppins";
+                color: white;
+                background: linear-gradient(to right, #0057b8, #037fa0);
+                padding: 15px;
             }
 
-            h3 {
+            h3, h4 {
                 text-align: center;
+                font-family: "Poppins";
+                font-weight: normal;
+                color: #0c4579;
             }
 
-            p {
+            .top {
                 width: 700px;
                 margin: auto;
+            }
+
+            .selector {
+                width: 400px;
+                display: flex;
+                flex-direction: row;
+                margin: auto;
+            }
+
+            .selector label {
+                margin-right: 3px;
             }
 
             .gridlines line {
@@ -26,11 +51,24 @@
             .mainarea {
                 display: flex;
                 flex-direction: column;
+                align-items: center;
             }
 
             .graph {
                 display: flex;
                 flex-direction: row;
+            }
+
+            .sidebar {
+                width: 400px;
+            }
+
+            .sidebar ol li {
+                margin-bottom: 10px;
+            }
+
+            .bottom {
+                margin: auto;
             }
         </style>
     </head>
@@ -38,13 +76,13 @@
         <h1>SAVE THE DATA</h1>
         <h3>CDC Datasets backed up as protection from censorship by the Trump Administration</h3>
 
-        <p style="margin-bottom: 10px">As part of the Trump administration's anti-LGBTQ and anti-DEI platform, many CDC webpages and datasets have been removed from the internet due to their relationship to said topics. In addition to more obvious content, they have also censored data that has no direct relation to LGBTQ and DEI issues, including the largest monitoring program on high school health-related behaviors.</p>
+        <p style="margin-bottom: 10px" class="top">As part of the Trump administration's anti-LGBTQ and anti-DEI platform, many CDC webpages and datasets have been removed from the internet due to their relationship to said topics. In addition to more obvious content, they have also censored data that has no direct relation to LGBTQ and DEI issues, including that of youth health, vaccinations, COVID-19, and other crucial topics that are relevant to a wide range of applications.</p>
 
-        <p>Here, you can explore the current progress of an effort to back up the CDC's data library to <a href="https://archive.org/">archive.org</a> to minimize the loss of this valuable information:</p>
+        <p style="margin-bottom: 10px" class="top">Here, you can explore the current progress of an effort to back up the CDC's data library to <a href="https://archive.org/">archive.org</a> to minimize the loss of this valuable information:</p>
 
         <div class="mainarea">
-            <div>
-                <label for="categorySelector">Break down progress by:</label>
+            <div class="selector">
+                <label for="categorySelector">Break down progress by: </label>
                 <select id="categorySelector">
                     <option value="categories">CDC Category</option>
                     <option value="keywords">Keyword</option>
@@ -54,16 +92,17 @@
             </div>
             <div class="graph">
                 <svg id="barchart" height="1000" width="1000"></svg>
-                <p>ADD TEXT ABOUT THE TOP VALUES TO EXPLAIN WHAT THEY MEAN</p>
+                <div class="sidebar" id="sidebar"></div>
             </div>
-            <p>ADD NOTE HERE ABOUT CHANGES MADE TO THE DATA</p>
+            <p class="bottom" style="margin-top: 15px; width: 445px;"><em>*Hover on points to see exact counts</em></p>
+            <p class="bottom" style="margin-top: 10px; margin-bottom: 20px; width: 800px;"><em>Source: <a href="https://github.com/rfordatascience/tidytuesday/tree/main/data/2025/2025-02-11">https://github.com/rfordatascience/tidytuesday/tree/main/data/2025/2025-02-11</a></em></p>
         </div>
 
         <script>
             const svg = d3.select("#barchart");
             const width = svg.attr("width");
             const height = svg.attr("height");
-            const margin = { top: 10, right: 10, bottom: 55, left:220};
+            const margin = { top: 10, right: 50, bottom: 55, left:220};
             const chartWidth = width - margin.left - margin.right;
             const chartHeight = height - margin.top - margin.bottom;
             let annotations = svg.append("g").attr("id","annotations");
@@ -90,19 +129,23 @@
 
                 categories.forEach(d => {
                     if (d.division.length > 35) {
+                        d.division_full = d.division
                         d.division = d.division.substring(0, 35) + "...";
-                    }        
+                    }
+                    else {
+                        d.division_full = d.division;
+                    }      
                 });
 
                 categories.sort((a, b) => a.count - b.count);
+
+                console.log(categories);
 
                 const categoriesCountExtent = d3.extent(categories, d => d['count']);
                 const categoriesCountScale = d3.scaleLinear().domain(categoriesCountExtent).range([0, chartWidth]);
 
                 const categoriesExtent = d3.map(categories, d => d.division);
                 const categoriesScale = d3.scaleBand().domain(categoriesExtent).range([chartHeight, 0]);
-
-                const categoriesColor = d3.scaleSequential(d3.interpolateMagma).domain(categoriesCountExtent);
 
                 // For breakdown by keywords
                 const keywordCounts = {};
@@ -117,6 +160,16 @@
                 let keywords_unfiltered = Object.entries(keywordCounts).map(([keyword, count]) => ({ division: keyword, count }));
 
                 const keywords = keywords_unfiltered.filter(d => (d.division !== 'This dataset does not have any tags') && (d.division !== '...') && (d.count >= 20));
+
+                keywords.forEach(d => {
+                    if (d.division.length > 35) {
+                        d.division_full = d.division
+                        d.division = d.division.substring(0, 35) + "...";
+                    }
+                    else {
+                        d.division_full = d.division;
+                    }      
+                });
 
                 console.log(keywords);
 
@@ -147,6 +200,16 @@
 
                 const bureaus = Object.entries(bureauCounts).map(([bureau, count]) => ({ division: bureau, count }));
 
+                bureaus.forEach(d => {
+                    if (d.division.length > 35) {
+                        d.division_full = d.division
+                        d.division = d.division.substring(0, 35) + "...";
+                    }
+                    else {
+                        d.division_full = d.division;
+                    }      
+                });
+
                 bureaus.sort((a, b) => a.count - b.count);
 
                 const bureausCountExtent = d3.extent(bureaus, d => d['count']);
@@ -170,6 +233,16 @@
 
                 const programs = Object.entries(programCounts).map(([program, count]) => ({ division: program, count }));
 
+                programs.forEach(d => {
+                    if (d.division.length > 35) {
+                        d.division_full = d.division
+                        d.division = d.division.substring(0, 35) + "...";
+                    }
+                    else {
+                        d.division_full = d.division;
+                    }      
+                });
+
                 programs.sort((a, b) => a.count - b.count);
 
                 const programsCountExtent = d3.extent(programs, d => d['count']);
@@ -189,25 +262,81 @@
 
                 const divisionCountScales = {'categories': categoriesCountScale, 'keywords': keywordsCountScale, 'bureaus': bureausCountScale, 'programs': programsCountScale}
 
-                const divisionColorScales = {'categories': categoriesColor, 'keywords': keywordsColor, 'bureaus': bureausColor, 'programs': programssColor}
-
                 const axistitles = {'categories': "Category", 'keywords': "Keyword", 'bureaus': "Bureau", 'programs': "Federal Program"}
                 
 
                 const categorySelector = d3.select("#categorySelector");
+
+                const sidebar = d3.select("#sidebar");
+
+                // Sidebar generation functions
+                function categories_sidebar() {
+                    sidebar.html(`
+                        <h4>Glossary</h4>
+                        <ol>
+                            <li><strong>NNDSS:</strong> The National Notifiable Disease Surveillance System (NNDSS) is a collaboration effort that aims to share disease-related information across all levels of public health (local, state, territorial, federal, and international).</li>
+                            <li><strong>NCHS:</strong> The National Center for Health Statistics (NCHS) is an agency that collects health statistics to provide insights and guide programs and policies throughout the U.S.</li>
+                            <li><strong>National Institute for Occupational Safety and Health:</strong> The National Institute for Occupational Safety and Health is a research institute that focuses specifically on preventing work-related injury and illness.</li>
+                        </ol>
+                    `);
+                }
+
+                function keywords_sidebar() {
+                    sidebar.html(`
+                        <h4>Glossary</h4>
+                        <ol>
+                            <li><strong>WONDER:</strong> Wide-ranging Online Data for Epidemiologic Research (WONDER) is an online platform used by the CDC to make health data available to professionals and the public.</li>
+                            <li><strong>NNDSS:</strong> The National Notifiable Disease Surveillance System (NNDSS) is a collaboration effort that aims to share disease-related information across all levels of public health (local, state, territorial, federal, and international).</li>
+                            <li><strong>NETSS:</strong> The National Electronic Telecommunications System for Surveillance (NETSS) is a system by which the CDC collects weekly data about notifiable diseases throughout the U.S.</li>
+                            <li><strong>NEDSS:</strong> The National Electronic Disease Surveillance System is an integrated information system that helps all levels of public health manage and disease data and report it to the CDC.</li>
+                            <li><strong>NCHS:</strong> The National Center for Health Statistics (NCHS) is an agency that collects health statistics to provide insights and guide programs and policies throughout the U.S.</li>
+                        </ol>
+                    `);
+                }
+
+                function bureaus_sidebar() {
+                    sidebar.html(`
+                        <h4>Glossary</h4>
+                        <ol>
+                            <li><strong>Department of Health and Human Services:</strong> The U.S. Department of Health and Human Services is a federal organization that aims to improve the health and well-being of all Americans.</li>
+                            <li><strong>Health Resourches and Services Administration:</strong> The Health Resourches and Services Administration is a federal organization that provides healthcare to geographically, economically, or medically vulnerable individuals.</li>
+                        </ol>
+                    `);
+                }
+
+                function programs_sidebar() {
+                    sidebar.html(`
+                        <h4>Glossary</h4>
+                        <ol>
+                            <li><strong>Program Management:</strong> The <a href="https://data.gov/">Data.gov</a> Program Management Office manages the U.S. government's open database.</li>
+                            <li><strong>National Institute for Occupational Safety and Health:</strong> The National Institute for Occupational Safety and Health is a research institute that focuses specifically on preventing work-related injury and illness.</li>
+                        </ol>
+                    `);
+                }
+
+                function clear_sidebar() {
+                    sidebar.html("");
+                }
+
+                const divisionSidebars = {'categories': categories_sidebar, 'keywords': keywords_sidebar, 'bureaus': bureaus_sidebar, 'programs': programs_sidebar}
+
+                svg.selectAll("#annotations, #bars")
+                    .attr("font-family", "Nunito");
 
                 function updateGraph() {
                     annotations.selectAll("g").remove();
                     chartArea.selectAll("line").remove();
                     chartArea.selectAll("circle").remove();
                     chartArea.selectAll("text").remove();
+                    clear_sidebar();
 
                     let currentSelection = categorySelector.property("value");
 
                     let divisionData = divisions[currentSelection];
                     let divisionScale = divisionScales[currentSelection];
                     let divisionCountScale = divisionCountScales[currentSelection];
-                    let divisionColorScale = divisionColorScales[currentSelection];
+                    let divisionSidebar = divisionSidebars[currentSelection];
+
                     let axistitle = axistitles[currentSelection];
 
                     let leftAxis = d3.axisLeft(divisionScale);
@@ -239,7 +368,7 @@
                             .attr('y1', d => divisionScale(d.division) + (divisionScale.bandwidth()/2))
                             .attr('y2', d => divisionScale(d.division) + (divisionScale.bandwidth()/2))
                             .attr('stroke-width', 4)
-                            .attr('stroke', "red");
+                            .attr('stroke', "#0057b8");
 
                     // Data join for end circles
                     let circles = chartArea.selectAll('circle').data(divisionData)
@@ -247,14 +376,25 @@
                             .attr('cx', d => divisionCountScale(d.count))
                             .attr('cy', d => divisionScale(d.division) + (divisionScale.bandwidth()/2))
                             .attr('r', 4)
-                            .attr('fill', "red");
+                            .attr('fill', "#0057b8");
 
-                    // Add text label
-                    chartArea.append('text')
+                    // Add text label for hover
+                    let fullcount_background = chartArea.append('rect')
+                             .attr('x', 0)
+                             .attr('y', 0)
+                             .attr('id', 'fullcount_background')
+                             .attr('width', 0)
+                             .attr('height', 0)
+                             .attr('fill', 'none');
+                             
+
+                    let fullcount = chartArea.append('text')
                             .attr('id', 'fullcount')
-                            .attr('x', 500)
-                            .attr('y', 500);
+                            .attr('x', 0)
+                            .attr('y', 0)
+                            .attr("text-anchor", "middle");
 
+                    // Add axis labels
                     chartArea.append('text')
                              .attr('x', width/2 - margin.left)
                              .attr('y', height - 10)
@@ -269,26 +409,40 @@
 
                     circles.on("mouseover", function() {
                         d3.select(this)
-                        .transition().duration(200)
+                        .transition().duration(50)
                         .attr("stroke-width", 2)
                         .attr("stroke", "black");
 
                         let division_label = d3.select(this).datum()['division'];
+                        let division_full = d3.select(this).datum()['division_full'];
                         let division_count = d3.select(this).datum()['count'];
 
-                        d3.select('#fullcount')
-                          .text(division_label + ": " + division_count)
-                          .attr("x", divisionCountScale(division_count))
-                          .attr("y", divisionScale(division_label)+(divisionScale.bandwidth()/2));
+                        fullcount.text(division_full + ": " + division_count)
+                                    .attr("x", divisionCountScale(division_count))
+                                    .attr("y", divisionScale(division_label)+(divisionScale.bandwidth()/2)+25);
+
+                        let fullcount_size = fullcount.node().getBBox();
+
+                        fullcount_background.attr('x', fullcount_size['x']-3)
+                                            .attr('y', fullcount_size['y']-3)
+                                            .attr('width', fullcount_size['width']+6)
+                                            .attr('height', fullcount_size['height']+6)
+                                            .attr('fill', 'white')
+                                            .attr('stroke', 'lightgray');
                     });
 
                     circles.on("mouseout", function() {
                         d3.select(this)
-                        .transition().duration(200)
+                        .transition().duration(50)
                         .attr("stroke-width", 0);
 
-                        d3.select('#fullcount').text("");
+                        fullcount.text("");
+
+                        fullcount_background.attr('fill', 'none')
+                                            .attr('stroke', 'none');
                     });
+
+                    divisionSidebar();
                 }
                 updateGraph();
 
