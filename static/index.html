@@ -116,7 +116,7 @@
 
                 let keywords_unfiltered = Object.entries(keywordCounts).map(([keyword, count]) => ({ division: keyword, count }));
 
-                const keywords = keywords_unfiltered.filter(d => (d.division !== 'This dataset does not have any tags') && (d.count >= 20));
+                const keywords = keywords_unfiltered.filter(d => (d.division !== 'This dataset does not have any tags') && (d.division !== '...') && (d.count >= 20));
 
                 console.log(keywords);
 
